@@ -1,115 +1,92 @@
-const cardOfHumans = document.getElementById("allHumans");
+const cardsOfFriends = document.getElementById("allHumans");
 const searchBar = document.getElementById("search");
-const checkboxesGender = document.getElementById("filter_gender");
+const filterMenu = document.getElementById("filter_menu");
+const URL = "https://randomuser.me/api/?results=2";
+let friends;
 
-let arrFiltered;
-let friends = [];
-fetch("https://randomuser.me/api/?results=10")
-  .then((response) => response.json())
-  .then((users) => {
-    friends = Array.from(users.results);
-    displayUsers(friends);
-    sortFriends(friends);
-    selectFriends(friends);
-    filterByGender(friends);
-    searchFriends(friends);
-  });
+function startApp() {
+  fetch(URL)
+    .then((response) => response.json())
+    .then((users) => {
+      console.log("ok");
+      friends = users.results;
+      displayUsers(friends);
+      filterMenu.addEventListener("click", (event) => {
+        renderFriends(event, friends);
+      });
+    })
+    .catch((error) => console.log("Authorization failed : " + error.message));
+}
 
-const displayUsers = (friends) => {
-  const htmlString = friends
+function renderFriends({ target }, friends) {
+  const sortedResults = sortFriends(target, friends);
+  filterByGender(sortedResults ?? []);
+}
+function displayUsers(friends) {
+  const createCards = friends
     .map((item) => {
-      return `<div class="card_person">
-    <div class="card_container">
-    <img src="${item.picture.large}">
-    <h3 class="card_h3">${item.name.first} ${item.name.last}</h3>
-    <p class="card_age">Age: ${item.dob.age}</p>
-    <p class="card_gender">Gender: ${item.gender}</p>
-    </div>
-    </div>`;
+      return `
+      <div class="card_person">
+      <div class="card_container">
+      <img src="${item.picture.large}">
+      <h3 class="card_h3">${item.name.first} ${item.name.last}</h3>
+      <p class="card_age">Age: ${item.dob.age}</p>
+      <p class="card_gender">Gender: ${item.gender}</p>
+      </div>
+      </div>`;
     })
     .join("");
-  cardOfHumans.innerHTML = htmlString;
-};
+  cardsOfFriends.innerHTML = createCards;
+}
 
-function increaseSortByName() {
-  console.log(friends);
-  let sortedIncrease = friends.sort(function (a, b) {
-    if (a.name.first.toLowerCase() < b.name.first.toLowerCase()) return -1;
-    if (a.name.first.toLowerCase() > b.name.first.toLowerCase()) return 1;
-    return 0;
-  });
-  displayUser(sortedIncrease);
+function sortByName(a, b) {
+  return a.dob.age > b.dob.age ? 1 : -1;
 }
-function decreaseSortByName() {
-  let sortedDecrease = friends.sort(function (a, b) {
-    if (a.name.first.toLowerCase() > b.name.first.toLowerCase()) return -1;
-    if (a.name.first.toLowerCase() < b.name.first.toLowerCase()) return 1;
-    return 0;
-  });
-  displayUser(sortedDecrease);
+
+function sortFriends(target, friends) {
+  const button = target.id;
+
+  switch (button) {
+    case "a-z":
+      friends.sort((a, b) => sortByName(a, b));
+      break;
+    case "z-a":
+      friends.sort((a, b) => sortByName(b, a));
+      break;
+    case "0-9":
+      friends.sort((a, b) => sortByAge(a, b));
+
+      break;
+
+    case "9-0":
+      friends.sort((a, b) => sortByAge(b, a));
+
+      break;
+  }
+  return friends;
 }
-function sortFriends() {
-  document.querySelector(".filter_menu").addEventListener("click", (event) => {
-    const button = event.target.id;
-    switch (button) {
-      case "a-z":
-        increaseSortByName();
-        break;
-      case "z-a":
-        decreaseSortByName();
-        break;
-      case "0-9":
-        increaseSortByAge();
-        break;
-      case "9-0":
-        decreaseSortByAge();
-        break;
-    }
-  });
+function sortByAge(a, b) {
+  return a.dob.age > b.dob.age ? 1 : -1;
 }
-function increaseSortByAge() {
-  let sortedAgeIncrease = friends.sort(function (a, b) {
-    return a.dob.age - b.dob.age;
-  });
-  displayUsers(sortedAgeIncrease);
-}
-function decreaseSortByAge() {
-  let sortedAgeDecrease = friends.sort(function (a, b) {
-    return b.dob.age - a.dob.age;
-  });
-  displayUsers(sortedAgeDecrease);
-}
-function filterByGender() {
-  let checkboxes = Array.from(
+function filterByGender(friends) {
+  const checkboxes = Array.from(
     document.querySelectorAll(".gender_checkbox:checked")
   );
-  arrFiltered = friends.filter((item) =>
+  const filteredUsers = friends.filter((item) =>
     checkboxes.some((gender) => item.gender === gender.value)
   );
-  displayUsers(arrFiltered);
-}
-function selectFriends() {
-  filterByGender();
-  if (arrFiltered.length == 0) {
-    cardOfHumans.innerHTML = "";
-  } else {
-    displayUsers(arrFiltered);
-  }
+  displayUsers(filteredUsers);
+  searchFriends(filteredUsers);
 }
 
-// SEARCH
-
-function searchFriends() {
-  searchBar.addEventListener("keyup", (e) => {
-    let searchedFriend = e.target.value.toLowerCase();
-    console.log(searchedFriend);
-    let filteredFriends = arrFiltered.filter((item) => {
-      return (
-        item.name.first.toLowerCase().includes(searchedFriend) ||
-        item.name.last.toLowerCase().includes(searchedFriend)
-      );
+function searchFriends(filteredUsers) {
+  searchBar.addEventListener("input", (e) => {
+    const search = e.target.value.toLowerCase();
+    const searchedFriend = filteredUsers.filter((item) => {
+      const { first: firstName, last: lastName } = item.name;
+      return `${firstName} ${lastName}`.toLowerCase().includes(search);
     });
-    displayUsers(filteredFriends);
-    console.log(filteredFriends);
+    displayUsers(searchedFriend);
   });
 }
+startApp();
